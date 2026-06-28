@@ -18,6 +18,9 @@ load_dotenv()
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+current_language = "French"
+complaint_text = "Choix direct de la catégorie"
+
 class AudioRecorder:
     def __init__(self, chunk=1024, channels=1, rate=44100, output_file="output.wav"):
         self.chunk = chunk
@@ -135,17 +138,19 @@ def traitement():
     request = drive_service.files().get_media(fileId=file_id)
     response = request.execute()
 
-    d ={"Sécurité et sûreté":"type1", "Ponctualité et régularité":"type2", "Informations voyageur":"type3", "Comportement du personnel": "type4", "Tarification": "type5", "Equipements": "type6"}
-
     # read the csv
     content = response.decode('utf-8').splitlines()
     rows = list(csv.reader(content))
 
     # add new row
-    with open("categories.txt","r", encoding="utf-8", errors = "ignore") as f:
+    with open("categories.txt", "r", encoding="utf-8", errors="ignore") as f:
         lista = [line.rstrip('\n') for line in f.readlines()]
     if response_text in lista:
-        new_row = ["SURVEY", d[response_text], "APR THRU JUN", Tram, "1", "Varroa_mites", "25", "AL"]
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lat, lon = 33.5350, -7.6322  # Fixed coordinates of the Technopark kiosk
+        
+        new_row = [timestamp, current_language, response_text, Tram, "Technopark", lat, lon, complaint_text]
         rows.append(new_row)
 
         # convert rows back to csv
@@ -158,39 +163,7 @@ def traitement():
         drive_service.files().update(fileId=file_id, media_body=media).execute()
     Traitement.mainloop()
 
-import csv
-import io
-import googleapiclient.discovery
-from google.oauth2 import service_account
-
-# drive api
-credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json")
-credentials = service_account.Credentials.from_service_account_file(credentials_path)
-drive_service = googleapiclient.discovery.build('drive', 'v3', credentials=credentials)
-
-# file id
-file_id = os.getenv("GOOGLE_DRIVE_FILE_ID")
-
-# get the csv from Drive
-request = drive_service.files().get_media(fileId=file_id)
-response = request.execute()
-
-# read the csv
-content = response.decode('utf-8').splitlines()
-rows = list(csv.reader(content))
-
-# add new row
-new_row = ["SURVEY", "type6", "APR THRU JUN", "Tram02", "1", "Varroa_mites", "25", "AL"]
-rows.append(new_row)
-
-# convert rows back to csv
-output = io.StringIO()
-writer = csv.writer(output)
-writer.writerows(rows)
-
-# update file on Drive
-media = googleapiclient.http.MediaIoBaseUpload(io.BytesIO(output.getvalue().encode()), mimetype='text/csv')
-drive_service.files().update(fileId=file_id, media_body=media).execute()
+    
 
 def saisir_ar():
     global Saisir 
@@ -238,6 +211,8 @@ def saisir_ar():
            # file.write(response_text)
         category = response_text
         print(category)
+        global complaint_text
+        complaint_text = saisie.get("1.0", "end-1c")
         traitement()
 
 
@@ -355,6 +330,8 @@ def saisir_en():
            #     file.write(response_text)
         category = response_text
         print(category)
+        global complaint_text
+        complaint_text = saisie.get("1.0", "end-1c")
         traitement()
 
     saisirLabel = Label(Saisir, justify= CENTER, text = "Enter your complaint", font = "Roboto 24 bold", fg= "#F77C3F")
@@ -470,6 +447,8 @@ def saisir_fr():
            # file.write(response_text)
         category = response_text
         print(category)
+        global complaint_text
+        complaint_text = saisie.get("1.0", "end-1c")
         traitement()
     
 
@@ -549,11 +528,12 @@ def deposer_ar():
     global response_text
     cat = 0
     def assign(value):
-        global response_text
+        global response_text, complaint_text
         cat = value
         if cat == 7:
             saisir_ar()
         else:
+            complaint_text = "Choix direct de la catégorie"
             with open("categories.txt","r", encoding="utf-8", errors = "ignore") as f:
                 lista = [line.rstrip('\n') for line in f.readlines()]
             response_text = lista[cat-1]
@@ -664,11 +644,12 @@ def deposer_en():
     global cat
     cat = 0
     def assign(value):
-        global response_text
+        global response_text, complaint_text
         cat = value
         if cat == 7:
             saisir_en()
         else:
+            complaint_text = "Choix direct de la catégorie"
             with open("categories.txt","r", encoding="utf-8", errors = "ignore") as f:
                 lista = [line.rstrip('\n') for line in f.readlines()]
             response_text = lista[cat-1]
@@ -779,11 +760,12 @@ def deposer_fr():
     global cat
     cat = 0
     def assign(value):
-        global response_text
+        global response_text, complaint_text
         cat = value
         if cat == 7:
             saisir_fr()
         else:
+            complaint_text = "Choix direct de la catégorie"
             with open("categories.txt","r", encoding="utf-8", errors = "ignore") as f:
                 lista = [line.rstrip('\n') for line in f.readlines()]
             response_text = lista[cat-1]
@@ -1111,6 +1093,8 @@ def languages():
     def francais_button():
         global selected_option
         global tram_dropdown
+        global current_language
+        current_language = "French"
         tram_dropdown = Toplevel(Languages)
         tram_dropdown.title("TramDropdown")
         tram_dropdown.geometry("1920x1080")
@@ -1145,6 +1129,8 @@ def languages():
     def arabic_button():
         global selected_option
         global Tram
+        global current_language
+        current_language = "Arabic"
         tram_dropdown = Toplevel(Languages)
         tram_dropdown.title("TramDropdown")
         tram_dropdown.geometry("1920x1080")
@@ -1181,6 +1167,8 @@ def languages():
     def english_button():
         global selected_option
         global Tram
+        global current_language
+        current_language = "English"
         tram_dropdown = Toplevel(Languages)
         tram_dropdown.title("TramDropdown")
         tram_dropdown.geometry("1920x1080")
